@@ -2,6 +2,54 @@
 
 Observed on 17 October 2026. Aliases below are documentation labels, not device hostnames. This map separates observed attachments from relationships that still need confirmation.
 
+## Visual overview
+
+These diagrams show the observed relationships. LAN lines represent membership in the same network, not known physical cabling. Tailscale lines represent private-network membership. Status is from the 17 October 2026 snapshot.
+
+### Home network
+
+```mermaid
+flowchart TB
+    G["Default gateway · lan-01<br/>Router details pending"]
+    L["Home LAN<br/>Physical switches and access points not mapped"]
+    W["Windows workstation"]
+    D["12 other responding addresses<br/>lan-02 through lan-13 · identities pending"]
+    G --- L
+    L --- W
+    L --- D
+```
+
+### VMs on the Windows workstation
+
+```mermaid
+flowchart TB
+    W["Windows workstation · Hyper-V"]
+    W --- S["Default virtual switch"]
+    W --- I["Lab virtual switch"]
+    S --- CI["vm-04 · CI VM<br/>Running"]
+    S --- K["vm-03 · Security lab<br/>Saved"]
+    S --- A["vm-01 · Accessibility Linux<br/>Off"]
+    S --- F["vm-02 · Accessibility desktop<br/>Off"]
+    S --- R["vm-06 · Rehearsal<br/>Off"]
+    S --- C["vm-07 · CTF lab<br/>Off"]
+    I --- LAB["vm-05 · Lab VM<br/>Off"]
+```
+
+### Tailscale private network
+
+The Windows workstation below is the same PC shown above. Physical locations and overlap with the other LAN endpoints remain unconfirmed.
+
+```mermaid
+flowchart TB
+    T["Tailscale private network"]
+    T --- W["overlay-01 · Windows workstation<br/>Reported online"]
+    T --- M["overlay-04 · macOS registration<br/>Reported online"]
+    T --- P["overlay-05 · iOS registration<br/>Reported online"]
+    T --- L["overlay-06 · Linux subnet router<br/>Reported online"]
+    T --- O["overlay-02 · Other Windows registration<br/>Reported offline"]
+    T --- OLD["overlay-03 · Second macOS registration<br/>Reported offline"]
+```
+
 ## Home LAN
 
 The Windows workstation is connected to the home LAN over Ethernet. Its network configuration identifies a default gateway and a preferred local DNS address. The gateway answered the ARP discovery request; the preferred local DNS address did not answer during this pass. Its absence does not prove it is offline.
