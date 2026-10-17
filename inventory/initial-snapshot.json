@@ -1,0 +1,86 @@
+{
+  "observedDate": "2026-10-17",
+  "complete": false,
+  "lan": {
+    "respondingAddressesExcludingCollector": 13,
+    "collectorAdditional": true,
+    "identifiedGatewayAlias": "lan-01",
+    "otherRoles": "unclassified",
+    "aliases": [
+      "lan-01",
+      "lan-02",
+      "lan-03",
+      "lan-04",
+      "lan-05",
+      "lan-06",
+      "lan-07",
+      "lan-08",
+      "lan-09",
+      "lan-10",
+      "lan-11",
+      "lan-12",
+      "lan-13"
+    ]
+  },
+  "hyperV": [
+    {
+      "alias": "vm-01",
+      "state": "Off",
+      "switch": "default-switch",
+      "guestAddress": "not-reported"
+    },
+    {
+      "alias": "vm-02",
+      "state": "Off",
+      "switch": "default-switch",
+      "guestAddress": "not-reported"
+    },
+    {
+      "alias": "vm-03",
+      "state": "Saved",
+      "switch": "default-switch",
+      "guestAddress": "not-reported"
+    },
+    {
+      "alias": "vm-04",
+      "state": "Running",
+      "switch": "default-switch",
+      "guestAddress": "not-reported"
+    },
+    {
+      "alias": "vm-05",
+      "state": "Off",
+      "switch": "isolated-lab-switch",
+      "guestAddress": "not-reported"
+    },
+    {
+      "alias": "vm-06",
+      "state": "Off",
+      "switch": "default-switch",
+      "guestAddress": "not-reported"
+    },
+    {
+      "alias": "vm-07",
+      "state": "Off",
+      "switch": "default-switch",
+      "guestAddress": "not-reported"
+    }
+  ],
+  "tailscale": {
+    "registered": 6,
+    "reportedOnline": 4,
+    "collectorAlias": "overlay-01",
+    "onlineAliases": [
+      "overlay-01",
+      "overlay-04",
+      "overlay-05",
+      "overlay-06"
+    ],
+    "deduplicatedWithLan": false
+  },
+  "limitations": [
+    "Counts overlap; do not sum across discovery sources.",
+    "Remote hypervisors, guests, containers, IPv6 and additional VLANs not inventoried.",
+    "Raw addresses and names are stored locally only."
+  ]
+}

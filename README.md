@@ -1,10 +1,14 @@
 # Homelab / Infrastructure
 
-This is a future portfolio project focused on Proxmox, Linux, Docker/LXC, networking, storage, monitoring, documentation, and small Bash/PowerShell automations.
+An evolving homelab inventory and infrastructure portfolio covering virtualization, networking, storage, monitoring, documentation, and small automations.
 
 ## Status
 
-This repository is intentionally a placeholder for now. It does not yet represent a completed project.
+The first discovery snapshot was collected on 17 October 2026. This is a partial inventory, not a complete or continuously monitored infrastructure map.
+
+Start with the [first infrastructure map](docs/infrastructure-map.md), the [sanitized inventory](inventory/initial-snapshot.json), and the [discovery instructions](docs/discovery.md).
+
+The initial pass observed 13 responding LAN addresses, in addition to the Windows discovery host; 7 locally registered Hyper-V VMs, with 1 running; and 6 Tailscale registrations, with 4 reported online including the discovery host. These counts overlap and must not be added together.
 
 ## Future scope
 
@@ -15,4 +19,4 @@ Over time, this repository should document:
 - Configurations without secrets or sensitive information.
 - Useful small Bash and PowerShell automations.
 
-Any future examples should be reviewed and sanitized before they are added. Never commit passwords, tokens, private keys, or other secrets.
+Raw results remain in the ignored `local-discovery/` directory. Committed examples use aliases and omit IP addresses, MAC addresses, personal device names, account details, and tailnet domains. Never commit passwords, tokens, private keys, or other secrets.
