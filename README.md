@@ -103,27 +103,25 @@ An always-on Ubuntu laptop hosts GitHub Actions self-hosted runners. Runners exe
 - The rule set is loaded by a systemd unit at boot and re-checked by a timer every minute, so a removed table comes back. Without a default route it fails closed.
 - Exceptions are explicit and narrow: one TCP port to the NAS (NFS) and one to Jellyfin.
 
-## Media stack: Docker Compose
+## Container stack: Docker Compose
 
-Moved from a container on the cluster to the laptop to free memory on the small nodes. Defined in one Compose file: [media-stack/docker-compose.yml](media-stack/docker-compose.yml).
+A self-hosted media automation stack of seven containers, defined in one Compose file. It was moved from a container on the cluster to the laptop to free memory on the small nodes.
 
-| Service | Purpose |
+| Role | What it shows |
 | --- | --- |
-| Gluetun | VPN client container. The download client shares its network namespace. |
-| qBittorrent | Download client. Has no network path except through the VPN. |
-| Prowlarr | Indexer manager, syncs to Sonarr and Radarr |
-| Sonarr / Radarr | TV and movie library management |
-| Bazarr | Subtitles, English and Swedish |
-| Seerr | Request front end, integrated into Jellyfin |
+| VPN gateway container | Owns the tunnel and the only route out |
+| Download client | Shares the gateway's network namespace, no network of its own |
+| Library, subtitle and request services | Talk to each other by service name on the Compose network |
 
 Design decisions:
 
-- **Kill switch by design.** qBittorrent uses `network_mode: service:gluetun`. If the VPN is down, there is no network at all.
-- **Automatic port forwarding.** When the VPN provider assigns a forwarded port, Gluetun calls the qBittorrent API and sets the listening port. No manual step after a reconnect.
+- **Kill switch by design.** The download client uses `network_mode: service:<gateway>`. If the VPN is down, it has no network at all. No firewall rule to get wrong.
+- **Automatic port forwarding.** When the VPN provider assigns a forwarded port, a hook in the gateway calls the client's API and sets the listening port. No manual step after a reconnect.
 - **NAS as a Docker volume.** The media share is an NFS volume declared in the Compose file, not a host mount. If the NAS is unreachable, containers refuse to start instead of silently writing to the laptop disk.
-- **Secrets stay out of the file.** VPN credentials come from an `.env` file with mode 600 that is not committed.
-- **Size and quality limits.** 1080p only, with per-minute size caps, so the library does not fill with oversized releases.
+- **Secrets stay out of the file.** Credentials come from an `.env` file with mode 600 that is not committed.
+- **One user and group across containers,** matching the owner of the NAS share, so files written by one service are readable by the next and by Jellyfin.
 
+The Compose file: [media-stack/docker-compose.yml](media-stack/docker-compose.yml).
 ## Local AI models
 
 Models run locally on the workstation (Ryzen 5 7600X, 32 GB RAM, RTX 3070 8 GB), which dual boots Windows 11 and Kubuntu. Nothing here depends on a cloud API.
