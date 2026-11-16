@@ -32,10 +32,14 @@ flowchart TB
 
     ws[Workstation, RTX 3070<br/>dual boot Windows 11 / Kubuntu<br/>local AI models]
 
+    mac[MacBook Air M3<br/>admin client]
+
     router --- cluster
     router --- nas
     router --- laptop
     router --- ws
+    mac -. Tailscale, SSH .-> cluster
+    mac -. web interface .-> nas
 
     cluster -- backups, ISOs, media --> nas
     media -- NFS, one port --> nas
@@ -55,7 +59,7 @@ flowchart TB
 | NAS | AMD Turion II Neo N54L, 8 GB RAM | OpenMediaVault, NFS and SMB |
 | Laptop | Ubuntu 26.04, always on | CI runners, Docker host |
 | Workstation | Ryzen 5 7600X, 32 GB RAM, RTX 3070 | Dual boot Windows 11 and Kubuntu: daily driver, local AI models, admin |
-| MacBook | | Spare, currently powered off |
+| MacBook Air M3 | Apple M3 | Admin client: Tailscale, SSH, Proxmox and NAS web interfaces |
 
 Two public domains point at the lab. DNS is managed at Cloudflare.
 
