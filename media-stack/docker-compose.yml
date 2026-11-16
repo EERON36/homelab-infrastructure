@@ -1,0 +1,129 @@
+# Media stack: VPN-bound download client, library managers, subtitles and requests.
+#
+# Needs an .env file next to this one (mode 600, never committed):
+#   PIA_USER=...
+#   PIA_PASS=...
+#   PUID=1000
+#   PGID=100
+#   NAS_IP=...
+#   NAS_MEDIA_PATH=/export/path/to/Media
+#
+# Inside every container, /data is the NAS media share:
+#   /data/Downloads  /data/Incomplete  /data/Movies  /data/TV  /data/Anime
+
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 8080:8080 # qBittorrent web page, reached through the VPN container
+    environment:
+      - VPN_SERVICE_PROVIDER=private internet access
+      - OPENVPN_USER=${PIA_USER}
+      - OPENVPN_PASSWORD=${PIA_PASS}
+      - SERVER_REGIONS=SE Stockholm
+      - PORT_FORWARD_ONLY=true
+      - VPN_PORT_FORWARDING=on
+      # Tells qBittorrent the open port each time the VPN connects.
+      - VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORTS}},\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"random_port\":false,\"upnp\":false}" http://127.0.0.1:8080/api/v2/app/setPreferences 2>&1'
+      - TZ=Europe/Stockholm
+    volumes:
+      - ./config/gluetun:/gluetun
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: "service:gluetun" # all traffic goes through the VPN, no VPN means no traffic
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Europe/Stockholm
+      - WEBUI_PORT=8080
+    volumes:
+      - ./config/qbittorrent:/config
+      - media:/data
+    restart: unless-stopped
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Europe/Stockholm
+    volumes:
+      - ./config/prowlarr:/config
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Europe/Stockholm
+    volumes:
+      - ./config/sonarr:/config
+      - media:/data
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Europe/Stockholm
+    volumes:
+      - ./config/radarr:/config
+      - media:/data
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Europe/Stockholm
+    volumes:
+      - ./config/bazarr:/config
+      - media:/data
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+
+  # Seerr is the new name of Jellyseerr. Same app, same port.
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: seerr
+    init: true
+    environment:
+      - TZ=Europe/Stockholm
+    volumes:
+      - ./config/seerr:/app/config
+    ports:
+      - 5055:5055
+    restart: unless-stopped
+
+volumes:
+  # The NAS Media folder over NFS. If the NAS is off, the apps refuse to start instead of writing to the laptop disk.
+  media:
+    driver_opts:
+      type: nfs
+      o: addr=${NAS_IP},nfsvers=4,rw
+      device: ":${NAS_MEDIA_PATH}"
