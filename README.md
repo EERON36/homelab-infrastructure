@@ -98,7 +98,7 @@ Two mini PCs form one Proxmox VE 9 cluster, managed from a single interface. A t
 
 An always-on Ubuntu laptop hosts GitHub Actions self-hosted runners. Runners execute code from repositories, so the host is treated as untrusted towards the rest of the network:
 
-- SSH is key-only.
+- SSH is off by default. When I turn it on for maintenance, it accepts keys only, no passwords.
 - An `nftables` rule set drops every connection the host opens towards private address ranges. Only DNS to the gateway and replies to established connections are allowed.
 - The rule set is loaded by a systemd unit at boot and re-checked by a timer every minute, so a removed table comes back. Without a default route it fails closed.
 - Exceptions are explicit and narrow: one TCP port to the NAS (NFS) and one to Jellyfin.
