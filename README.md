@@ -1,12 +1,12 @@
-# Homelab / Infrastructure
+# Homelab
 
-A home lab I design, run and maintain myself: a two-node Proxmox cluster, a NAS, hardened self-hosted CI runners, a containerised media stack behind a VPN, and local AI models.
+This is my home lab. I built it to learn Linux, virtualisation and networking hands-on, and I run and maintain it myself. It's a work in progress, so it changes as I learn new things and add hardware.
 
-This repository documents the current state, the decisions behind it, and the problems I solved along the way. Everything is sanitised: no passwords, tokens, keys, public domain names or addresses.
+Here I write down what I run, why I set it up the way I did, and the problems I've had to solve along the way. Passwords, keys, domain names and IP addresses are left out.
 
 Last updated: November 2026.
 
-## Map
+## Overview
 
 ```mermaid
 flowchart TB
@@ -51,106 +51,90 @@ flowchart TB
 
 ## Hardware
 
-| Machine | Hardware | Role |
+| Machine | Hardware | What I use it for |
 | --- | --- | --- |
-| Proxmox node 1 | Mini PC, Intel i5-7300U, 16 GB RAM | Core services, application VMs |
-| Proxmox node 2 | Mini PC, Intel i5-8500T, 8 GB RAM | Media services, backup VM |
-| Proxmox node 3 | Mini PC | Planned, joins the cluster next |
-| NAS | AMD Turion II Neo N54L, 8 GB RAM | OpenMediaVault, NFS and SMB |
-| Laptop | Ubuntu 26.04, always on | CI runners, Docker host |
-| Workstation | Ryzen 5 7600X, 32 GB RAM, RTX 3070 | Dual boot Windows 11 and Kubuntu: daily driver, local AI models, admin |
-| MacBook Air M3 | Apple M3 | Admin client: Tailscale, SSH, Proxmox and NAS web interfaces |
+| Proxmox node 1 | Mini PC, Intel i5-7300U, 16 GB RAM | Core services and VMs for my own projects |
+| Proxmox node 2 | Mini PC, Intel i5-8500T, 8 GB RAM | Media services and a backup VM |
+| Proxmox node 3 | Mini PC | Joining the cluster next |
+| NAS | AMD Turion II Neo N54L, 8 GB RAM | OpenMediaVault, NFS and SMB shares |
+| Laptop | Ubuntu 26.04, always on | GitHub Actions runners and Docker |
+| Workstation | Ryzen 5 7600X, 32 GB RAM, RTX 3070 | Daily driver, local AI models, admin |
+| MacBook Air M3 | Apple M3 | Admin laptop: Tailscale, SSH and web interfaces |
 
-Two public domains point at the lab. DNS is managed at Cloudflare.
+I also have two domains pointing at the lab, with DNS managed in Cloudflare.
 
-## Virtualisation: Proxmox cluster
+## Proxmox cluster
 
-Two mini PCs form one Proxmox VE 9 cluster, managed from a single interface. A third node is being added.
+Two mini PCs run as one Proxmox VE 9 cluster, so I can manage both from the same interface. A third node is on the way.
 
-- Services run in LXC containers by default: low overhead on small hardware, one service per container, easy to back up and move.
-- VMs are used where a full kernel or stronger isolation is needed, for example staging and backup machines for my own software projects.
-- Both nodes mount the NAS as shared storage for backups, ISO images and container templates.
-- Guests are backed up to the NAS on a schedule with `vzdump`.
-- Uptime at the time of writing: 85 days on node 1, 43 days on node 2.
+- I run services in LXC containers by default. They use little memory, which matters on small hardware, and one service per container makes each one easy to back up or move.
+- I use VMs when I need a full kernel or more isolation, like test and backup machines for my own projects.
+- Both nodes use the NAS as shared storage for backups, ISO images and templates.
+- Backups run on a schedule with `vzdump` and are stored on the NAS.
 
-### Services
+### What runs on it
 
-| Area | Service | Runs as |
-| --- | --- | --- |
-| Remote access | Tailscale | LXC |
-| Reverse proxy and TLS | Nginx Proxy Manager | LXC |
-| DNS filtering | AdGuard Home | LXC |
-| Secrets | Vaultwarden (password manager) | LXC |
-| Monitoring | Uptime Kuma | LXC |
-| Documentation | BookStack | LXC |
-| Media | Jellyfin, Audiobookshelf | LXC |
-| Utilities | Actual Budget, Stirling-PDF | LXC |
-| Own projects | Staging, test and backup machines | VM |
+| Area | Service |
+| --- | --- |
+| Remote access | Tailscale |
+| Reverse proxy and TLS | Nginx Proxy Manager |
+| DNS filtering | AdGuard Home |
+| Passwords | Vaultwarden |
+| Monitoring | Uptime Kuma |
+| Documentation | BookStack |
+| Media | Jellyfin, Audiobookshelf |
+| Utilities | Actual Budget, Stirling-PDF |
+| My own projects | Test, staging and backup VMs |
 
-## Storage: NAS
+Everything runs in LXC containers, except my project machines, which are VMs.
 
-- OpenMediaVault on a low-power dual-core server, exporting shares over NFS (Linux hosts and containers) and SMB (Windows).
-- Serves three purposes: Proxmox backup target, ISO and template store, and media library.
-- The media share has a fixed layout: `Downloads`, `Incomplete`, `Movies`, `TV`, `Anime`. Downloads and library sit on the same share on purpose, so a finished download is moved with a rename instead of a copy across file systems.
-- A disk failure earlier this year cost some media. Since then the library is audited by script (missing files, duplicates, non-standard folders) instead of trusting folder listings.
+## NAS
 
-## CI runner host: hardened laptop
+My NAS runs OpenMediaVault and shares storage over NFS for Linux and SMB for Windows. I use it for three things: Proxmox backups, ISO images and templates, and my media library.
 
-An always-on Ubuntu laptop hosts GitHub Actions self-hosted runners. Runners execute code from repositories, so the host is treated as untrusted towards the rest of the network:
+Downloads and the media library sit on the same share on purpose. That way a finished download is just renamed into place instead of copied.
+
+Earlier this year a disk failed and I lost some media. Since then I check the library with a script (missing files, duplicates, odd folders) instead of trusting what the folders look like.
+
+## CI runner laptop
+
+An always-on Ubuntu laptop runs my self-hosted GitHub Actions runners. Runners run code from my repositories, so I treat this laptop as untrusted and keep it away from the rest of my network:
 
 - SSH is off by default. When I turn it on for maintenance, it accepts keys only, no passwords.
-- An `nftables` rule set drops every connection the host opens towards private address ranges. Only DNS to the gateway and replies to established connections are allowed.
-- The rule set is loaded by a systemd unit at boot and re-checked by a timer every minute, so a removed table comes back. Without a default route it fails closed.
-- Exceptions are explicit and narrow: one TCP port to the NAS (NFS) and one to Jellyfin.
+- An nftables firewall blocks every connection from the laptop to my home network. It can still reach the internet and use the router for DNS.
+- A systemd service loads the firewall rules at boot, and a timer checks them every minute, so they come back if something removes them.
+- There are only two exceptions: one port to the NAS for NFS, and one to Jellyfin.
 
-## Container stack: Docker Compose
+## Docker Compose media stack
 
-A self-hosted media automation stack of seven containers, defined in one Compose file. It was moved from a container on the cluster to the laptop to free memory on the small nodes.
+The laptop also runs a media stack of seven containers, all defined in one Compose file. I moved it here from the cluster to free up memory on the small nodes.
 
-| Role | What it shows |
-| --- | --- |
-| VPN gateway container | Owns the tunnel and the only route out |
-| Download client | Shares the gateway's network namespace, no network of its own |
-| Library, subtitle and request services | Talk to each other by service name on the Compose network |
+Things I set up on purpose:
 
-Design decisions:
+- **VPN kill switch.** The download client has no network of its own. It shares the VPN container's network, so if the VPN goes down, it has no connection at all.
+- **Automatic port forwarding.** When the VPN gives me a forwarded port, a hook updates the download client, so I don't have to fix it by hand after a reconnect.
+- **NAS as a Docker volume.** The media share is mounted over NFS from the Compose file. If the NAS is down, the containers won't start, instead of quietly filling up the laptop's disk.
+- **No secrets in the file.** Passwords live in an `.env` file that isn't committed.
+- **Same user everywhere.** All containers run as the same user and group that owns the NAS share, so files one app writes can be read by the others.
 
-- **Kill switch by design.** The download client uses `network_mode: service:<gateway>`. If the VPN is down, it has no network at all. No firewall rule to get wrong.
-- **Automatic port forwarding.** When the VPN provider assigns a forwarded port, a hook in the gateway calls the client's API and sets the listening port. No manual step after a reconnect.
-- **NAS as a Docker volume.** The media share is an NFS volume declared in the Compose file, not a host mount. If the NAS is unreachable, containers refuse to start instead of silently writing to the laptop disk.
-- **Secrets stay out of the file.** Credentials come from an `.env` file with mode 600 that is not committed.
-- **One user and group across containers,** matching the owner of the NAS share, so files written by one service are readable by the next and by Jellyfin.
+The Compose file: [media-stack/docker-compose.yml](media-stack/docker-compose.yml)
 
-The Compose file: [media-stack/docker-compose.yml](media-stack/docker-compose.yml).
 ## Local AI models
 
-Models run locally on the workstation (Ryzen 5 7600X, 32 GB RAM, RTX 3070 8 GB), which dual boots Windows 11 and Kubuntu. Nothing here depends on a cloud API.
+My workstation also runs AI models locally, with no cloud services involved:
 
-**On Windows:**
+- **Windows:** ComfyUI for image generation, kohya for LoRA training, and Qwen3-TTS for speech
+- **Kubuntu:** LM Studio running Qwen3-Coder to help with code
 
-- ComfyUI for image generation, with an SDXL-family checkpoint.
-- kohya for LoRA training.
-- Qwen3-TTS (1.7B) for speech synthesis and voice design.
-
-**On Kubuntu:**
-
-- LM Studio serving Qwen3-Coder for local code assistance.
-
-The 8 GB of VRAM sets the limits: SDXL-class image models and small speech models fit on the GPU, and the coding model runs quantised.
+The graphics card has 8 GB of memory, and that decides which models fit.
 
 ## Troubleshooting log
 
-Real problems from building this, each with symptom, cause, fix and lesson: [docs/troubleshooting.md](docs/troubleshooting.md).
+I keep notes on real problems I've run into: what happened, why, how I fixed it and what I learned. You can read them in [docs/troubleshooting.md](docs/troubleshooting.md).
 
-## Roadmap
+## What's next
 
-- Add the third Proxmox node to the cluster.
-- Limit the NAS export used by the runner host to the media share only.
-- Scheduled backup of the media stack configuration to the NAS.
-- Document the backup and restore procedure, including a tested restore.
-
-## Rules for this repository
-
-- Never commit passwords, tokens, private keys or other secrets.
-- No public domain names, public IP addresses or account names.
-- Configurations are examples: copy, then fill in your own values.
+- Add the third Proxmox node to the cluster
+- Limit the NAS share the runner laptop can reach to media only
+- Back up the media stack settings to the NAS on a schedule
+- Write down my backup and restore steps, and test a full restore
